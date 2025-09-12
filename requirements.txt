@@ -9,3 +9,4 @@ nltk
 transformers
 torch
 sentence-transformers
+langchain
