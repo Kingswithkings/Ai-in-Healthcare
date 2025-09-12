@@ -10,3 +10,4 @@ transformers
 torch
 sentence-transformers
 langchain
+langchain_openai
