@@ -1,0 +1,11 @@
+streamlit
+openai
+python-dotenv
+sqlite-utils
+pandas
+numpy
+scikit-learn
+nltk
+transformers
+torch
+sentence-transformers
