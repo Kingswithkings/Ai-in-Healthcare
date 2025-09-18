@@ -139,5 +139,4 @@ Integration with FHIR/EHR systems.
 More advanced tools: risk scoring, lab test interpretation.
 
 Speech-to-text voice input for doctors/patients.
-
-Would you like me to make this README.md as a downloadable file and package it into the same zip with your .py files + requirements.txt so your project is fully submission-ready?
+ 
