@@ -1,36 +1,45 @@
 import os
 from dotenv import load_dotenv
-import re
 import sqlite3
 from datetime import datetime
 from typing import List, Tuple
 from pathlib import Path
 
 import streamlit as st
-from langchain.agents import Tool, initialize_agent
-from langchain.agents.agent_types import AgentType
+
 from langchain_openai import ChatOpenAI
-# Load environment variables from .env file
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent as create_react_agent_lg
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ENV
+# ──────────────────────────────────────────────────────────────────────────────
 load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError(
+        "❌ OPENAI_API_KEY not found. Create a .env file with:\n"
+        "OPENAI_API_KEY=sk-...your key..."
+    )
+os.environ["OPENAI_API_KEY"] = api_key
 
-# Access the keys
-# api_key = os.getenv("API_KEY")
-
-# CONFIG 
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")  # <-- put your OpenAI key here
 DB_FILE = "augustina.db"
 
 # Branding / avatars
-ASSISTANT_NAME = "Augustina Medical Assistant"
+ASSISTANT_NAME = "Mary Medical Assistant"
 ICON_PATH = Path("images/augustina_icon.png")
 ASSISTANT_AVATAR = str(ICON_PATH) if ICON_PATH.exists() else "👩🏽‍⚕️"
 USER_AVATAR = "👤"
 
-# UI SETUP (global) 
-st.set_page_config(page_title="Augustina Medical Assistant", layout="centered")
-st.title("👩🏽‍⚕️ Augustina Medical Assistant")
+# ──────────────────────────────────────────────────────────────────────────────
+# UI SETUP
+# ──────────────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="Mary Medical Assistant", layout="centered")
+st.title("👩🏽‍⚕️ Mary Medical Assistant")
 
-# DB SETUP 
+# ──────────────────────────────────────────────────────────────────────────────
+# DB SETUP
+# ──────────────────────────────────────────────────────────────────────────────
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
 
@@ -65,11 +74,17 @@ CREATE TABLE IF NOT EXISTS soap_notes (
 """)
 conn.commit()
 
-#  LLM Large Language Model
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
+# ──────────────────────────────────────────────────────────────────────────────
+# LLM
+# ──────────────────────────────────────────────────────────────────────────────
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
 
-# TOOLS 
+# ──────────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ──────────────────────────────────────────────────────────────────────────────
+@tool
 def symptom_checker(text: str) -> str:
+    """Check likely causes of symptoms."""
     t = text.lower()
     if "fever" in t:
         return "Likely causes: Infection, flu, or COVID-19."
@@ -77,7 +92,9 @@ def symptom_checker(text: str) -> str:
         return "Possible causes: Migraine, tension, high blood pressure."
     return "Please provide more symptoms for accurate suggestions."
 
-def generate_clinical_note(text: str) -> str:
+@tool
+def clinical_note_generator(text: str) -> str:
+    """Generate a SOAP note."""
     note = (
         f"📝 **SOAP Note**\n"
         f"- **Subjective:** {text}\n"
@@ -88,33 +105,41 @@ def generate_clinical_note(text: str) -> str:
     st.session_state.setdefault("soap_buffer", []).append(note)
     return note
 
+@tool
 def drug_interaction_checker(text: str) -> str:
+    """Check for drug interactions."""
     drugs = [d.strip().lower() for d in text.split(",")]
     if "aspirin" in drugs and "warfarin" in drugs:
         return "⚠️ Aspirin + Warfarin = increased bleeding risk."
     return "✅ No major interactions found."
 
+@tool
 def differential_diagnosis(text: str) -> str:
+    """Suggest possible conditions."""
     if "chest pain" in text.lower():
         return "Differentials: MI, angina, GERD, anxiety."
     return "Need more details for differential diagnosis."
 
+@tool
 def lab_test_recommendation(text: str) -> str:
+    """Suggest lab tests."""
     if "fatigue" in text.lower():
         return "Recommended tests: CBC, Iron studies, TSH."
     return "Consider basic labs: CBC, BMP."
 
 tools = [
-    Tool("Symptom Checker", symptom_checker, "Check likely causes of symptoms."),
-    Tool("Clinical Note Generator", generate_clinical_note, "Generate a SOAP note."),
-    Tool("Drug Interaction Checker", drug_interaction_checker, "Check for drug interactions."),
-    Tool("Differential Diagnosis", differential_diagnosis, "Suggest possible conditions."),
-    Tool("Lab Test Recommendation", lab_test_recommendation, "Suggest lab tests.")
+    symptom_checker,
+    clinical_note_generator,
+    drug_interaction_checker,
+    differential_diagnosis,
+    lab_test_recommendation,
 ]
 
-# AGENT WITH STRICT MEDICAL SCOPE
+# ──────────────────────────────────────────────────────────────────────────────
+# AGENT (LangGraph prebuilt ReAct) — version compatible
+# ──────────────────────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = (
-    "You are Augustina, an AI-powered clinical assistant for healthcare professionals and patients. "
+    "You are Mary, an AI-powered clinical assistant for healthcare professionals and patients. "
     "You must ONLY answer questions related to healthcare, medicine, patient care, diagnostics, "
     "treatment, drugs, symptoms, anatomy, and clinical workflows. "
     "If the question is outside this scope (e.g., politics, sports, universities, technology unrelated to healthcare), "
@@ -131,16 +156,20 @@ SYSTEM_PROMPT = (
     "4) Include a brief safety reminder when appropriate (e.g., seek urgent care if red flags)."
 )
 
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=False,
-    handle_parsing_errors=True,
-    agent_kwargs={"system_message": SYSTEM_PROMPT}
-)
+# Some langgraph versions accept state_modifier, others messages_modifier; some neither.
+_NEED_SYSTEM_PER_CALL = False
+try:
+    agent_executor = create_react_agent_lg(model=llm, tools=tools, state_modifier=SYSTEM_PROMPT)
+except TypeError:
+    try:
+        agent_executor = create_react_agent_lg(model=llm, tools=tools, messages_modifier=SYSTEM_PROMPT)
+    except TypeError:
+        agent_executor = create_react_agent_lg(model=llm, tools=tools)
+        _NEED_SYSTEM_PER_CALL = True  # we’ll prepend the system message on each invoke
 
-# HELPERS 
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ──────────────────────────────────────────────────────────────────────────────
 def log_msg(pid: int, profid: int, sender: str, msg: str):
     cursor.execute(
         "INSERT INTO chat_logs VALUES (NULL, ?, ?, ?, ?, ?)",
@@ -172,7 +201,9 @@ def find_patient(name: str, age: int, sex: str):
     )
     return cursor.fetchone()
 
-# Scope validator (medical only) 
+# ──────────────────────────────────────────────────────────────────────────────
+# SCOPE VALIDATION (medical only)
+# ──────────────────────────────────────────────────────────────────────────────
 MEDICAL_HINTS = [
     "symptom","symptoms","pain","fever","headache","nausea","vomit","rash","bleeding",
     "cough","sore throat","diarrhea","shortness of breath","chest pain","heart rate",
@@ -195,7 +226,7 @@ def is_medical_query(text: str) -> bool:
         return False
     return any(k in t for k in MEDICAL_HINTS)
 
-def validate_question(text: str) -> (bool, str):
+def validate_question(text: str) -> Tuple[bool, str]:
     if not text or not text.strip():
         return False, "Please enter a medical or healthcare-related question."
     if len(text.strip()) < 3:
@@ -208,13 +239,17 @@ def validate_question(text: str) -> (bool, str):
         )
     return True, ""
 
-# STAGES 
+# ──────────────────────────────────────────────────────────────────────────────
+# STATE
+# ──────────────────────────────────────────────────────────────────────────────
 if "stage" not in st.session_state:
     st.session_state.stage = "pro_greeting"
 
+# ──────────────────────────────────────────────────────────────────────────────
 # Stage 1: Healthcare professional selection
+# ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.stage == "pro_greeting":
-    st.write("Hello! This is **Augustina Medical Chatbot**. How can I help you today?")
+    st.write("Hello! This is **Mary Medical Chatbot**. How can I help you today?")
 
     category = st.selectbox(
         "Category",
@@ -240,7 +275,9 @@ if st.session_state.stage == "pro_greeting":
         st.session_state.stage = "patient_form"
         st.rerun()
 
-# Stage 2: Patient intake with confirmation flow 
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 2: Patient intake with confirmation flow
+# ──────────────────────────────────────────────────────────────────────────────
 elif st.session_state.stage == "patient_form":
     st.subheader("Patient Details")
 
@@ -319,7 +356,9 @@ elif st.session_state.stage == "patient_form":
         st.session_state.stage = "pro_greeting"
         st.rerun()
 
-# Stage 2b: Existing patient review (separate stage so buttons fire) 
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 2b: Existing patient review
+# ──────────────────────────────────────────────────────────────────────────────
 elif st.session_state.stage == "patient_review":
     prof_name = st.session_state.get("professional_name", "User")
     data = st.session_state.get("review_patient", {})
@@ -383,7 +422,9 @@ elif st.session_state.stage == "patient_review":
         st.session_state.stage = "patient_form"
         st.rerun()
 
-# Stage 3: Chatbot 
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 3: Chatbot
+# ──────────────────────────────────────────────────────────────────────────────
 elif st.session_state.stage == "chat":
     professional_name = st.session_state.get("professional_name", "User")
 
@@ -425,7 +466,15 @@ elif st.session_state.stage == "chat":
             reply = reason  # fixed out-of-scope message
         else:
             try:
-                reply = agent.run(user_input)
+                # Build messages: prepend the system message if this langgraph build didn’t accept a modifier
+                msgs = [("user", user_input)]
+                if _NEED_SYSTEM_PER_CALL:
+                    msgs = [("system", SYSTEM_PROMPT)] + msgs
+
+                # LangGraph expects {"messages": ...} and returns state with a messages list
+                state = agent_executor.invoke({"messages": msgs})
+                last_msg = state["messages"][-1]
+                reply = getattr(last_msg, "content", str(last_msg))
             except Exception as e:
                 reply = f"⚠️ Could not process: {e}"
 
