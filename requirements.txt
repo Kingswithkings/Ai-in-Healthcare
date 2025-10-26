@@ -1,15 +1,6 @@
-streamlit
-openai
-python-dotenv
-sqlite-utils
-pandas
-numpy
-scikit-learn
-nltk
-transformers
-torch
-sentence-transformers
-langchain
-langchain_openai
-
-streamlit, langgraph, langchain-core, langchain-community, langchain-openai, python-dotenv
+streamlit>=1.39
+langgraph>=0.2.46
+langchain-core>=0.3.12
+langchain-community>=0.3.12
+langchain-openai>=0.2.7
+python-dotenv>=1.0.1
