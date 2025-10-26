@@ -1,41 +1,56 @@
 import os
-from dotenv import load_dotenv
 import sqlite3
 from datetime import datetime
 from typing import List, Tuple
 from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent as create_react_agent_lg
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ENV
+# ENV (Secrets first, then .env; works on Cloud and locally)
 # ──────────────────────────────────────────────────────────────────────────────
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+
+# Prefer Streamlit Secrets on Cloud; fallback to local .env for dev
+api_key = None
+try:
+    api_key = st.secrets.get("OPENAI_API_KEY")
+except Exception:
+    api_key = None
+
+if not api_key:
+    api_key = os.getenv("OPENAI_API_KEY")
+
 if not api_key:
     raise ValueError(
-        "❌ OPENAI_API_KEY not found. Create a .env file with:\n"
-        "OPENAI_API_KEY=sk-...your key..."
+        "❌ OPENAI_API_KEY not found.\n"
+        "On Streamlit Cloud: set it in Settings → Secrets.\n"
+        "Locally: create a .env file with OPENAI_API_KEY=sk-...your key..."
     )
+
 os.environ["OPENAI_API_KEY"] = api_key
 
-DB_FILE = "marcellina.db"  # ← renamed database
+# Optional visual confirmation
+st.caption("API key status: " + ("✅ found" if bool(api_key) else "❌ missing"))
+
+DB_FILE = "marcellina.db"  # ← database name
 
 # Branding / avatars
-ASSISTANT_NAME = "Marcellina Medical Assistant"  # ← renamed assistant
-ICON_PATH = Path("images/marcellina_icon.png")   # optional: use a new icon name if you have it
+ASSISTANT_NAME = "Marcellina Medical Assistant"
+ICON_PATH = Path("images/marcellina_icon.png")
 ASSISTANT_AVATAR = str(ICON_PATH) if ICON_PATH.exists() else "👩🏽‍⚕️"
 USER_AVATAR = "👤"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # UI SETUP
 # ──────────────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Marcellina Medical Assistant", layout="centered")  # ← page title
-st.title("👩🏽‍⚕️ Marcellina Medical Assistant")  # ← on-page heading
+st.set_page_config(page_title="Marcellina Medical Assistant", layout="centered")
+st.title("👩🏽‍⚕️ Marcellina Medical Assistant")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DB SETUP
@@ -202,7 +217,7 @@ def find_patient(name: str, age: int, sex: str):
     return cursor.fetchone()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# SCOPE VALIDATION (medical only)
+# MEDICAL VALIDATION
 # ──────────────────────────────────────────────────────────────────────────────
 MEDICAL_HINTS = [
     "symptom","symptoms","pain","fever","headache","nausea","vomit","rash","bleeding",
@@ -240,16 +255,17 @@ def validate_question(text: str) -> Tuple[bool, str]:
     return True, ""
 
 # ──────────────────────────────────────────────────────────────────────────────
-# STATE
+# STATE MANAGEMENT
 # ──────────────────────────────────────────────────────────────────────────────
 if "stage" not in st.session_state:
     st.session_state.stage = "pro_greeting"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Stage 1: Healthcare professional selection
+# MAIN APP FLOW (stages)
 # ──────────────────────────────────────────────────────────────────────────────
+# Stage 1: Healthcare professional selection
 if st.session_state.stage == "pro_greeting":
-    st.write("Hello! This is **Marcellina Medical Chatbot**. How can I help you today?")  # ← greeting updated
+    st.write("Hello! This is **Marcellina Medical Chatbot**. How can I help you today?")
 
     category = st.selectbox(
         "Category",
@@ -275,9 +291,7 @@ if st.session_state.stage == "pro_greeting":
         st.session_state.stage = "patient_form"
         st.rerun()
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Stage 2: Patient intake with confirmation flow
-# ──────────────────────────────────────────────────────────────────────────────
 elif st.session_state.stage == "patient_form":
     st.subheader("Patient Details")
 
@@ -356,9 +370,7 @@ elif st.session_state.stage == "patient_form":
         st.session_state.stage = "pro_greeting"
         st.rerun()
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Stage 2b: Existing patient review
-# ──────────────────────────────────────────────────────────────────────────────
+# Stage 2b: Existing patient review (separate stage so buttons fire)
 elif st.session_state.stage == "patient_review":
     prof_name = st.session_state.get("professional_name", "User")
     data = st.session_state.get("review_patient", {})
@@ -422,9 +434,7 @@ elif st.session_state.stage == "patient_review":
         st.session_state.stage = "patient_form"
         st.rerun()
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: Chatbot
-# ──────────────────────────────────────────────────────────────────────────────
 elif st.session_state.stage == "chat":
     professional_name = st.session_state.get("professional_name", "User")
 
