@@ -23,19 +23,19 @@ if not api_key:
     )
 os.environ["OPENAI_API_KEY"] = api_key
 
-DB_FILE = "augustina.db"
+DB_FILE = "marcellina.db"  # ← renamed database
 
 # Branding / avatars
-ASSISTANT_NAME = "Augustina Medical Assistant"
-ICON_PATH = Path("images/augustina_icon.png")
+ASSISTANT_NAME = "Marcellina Medical Assistant"  # ← renamed assistant
+ICON_PATH = Path("images/marcellina_icon.png")   # optional: use a new icon name if you have it
 ASSISTANT_AVATAR = str(ICON_PATH) if ICON_PATH.exists() else "👩🏽‍⚕️"
 USER_AVATAR = "👤"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # UI SETUP
 # ──────────────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Augustina Medical Assistant", layout="centered")
-st.title("👩🏽‍⚕️ Augustina Medical Assistant")
+st.set_page_config(page_title="Marcellina Medical Assistant", layout="centered")  # ← page title
+st.title("👩🏽‍⚕️ Marcellina Medical Assistant")  # ← on-page heading
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DB SETUP
@@ -139,7 +139,7 @@ tools = [
 # AGENT (LangGraph prebuilt ReAct) — version compatible
 # ──────────────────────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = (
-    "You are Augustina, an AI-powered clinical assistant for healthcare professionals and patients. "
+    "You are Marcellina, an AI-powered clinical assistant for healthcare professionals and patients. "
     "You must ONLY answer questions related to healthcare, medicine, patient care, diagnostics, "
     "treatment, drugs, symptoms, anatomy, and clinical workflows. "
     "If the question is outside this scope (e.g., politics, sports, universities, technology unrelated to healthcare), "
@@ -249,7 +249,7 @@ if "stage" not in st.session_state:
 # Stage 1: Healthcare professional selection
 # ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.stage == "pro_greeting":
-    st.write("Hello! This is **Augustina Medical Chatbot**. How can I help you today?")
+    st.write("Hello! This is **Marcellina Medical Chatbot**. How can I help you today?")  # ← greeting updated
 
     category = st.selectbox(
         "Category",
