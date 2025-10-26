@@ -1,4 +1,4 @@
-📘 Augustina Medical Assistant
+📘Marcellina Medical Assistant
 
 An AI-powered clinical chatbot designed to support healthcare professionals in real-time decision support, patient documentation, and interactive consultation.
 

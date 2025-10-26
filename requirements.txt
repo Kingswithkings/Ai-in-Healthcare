@@ -11,3 +11,5 @@ torch
 sentence-transformers
 langchain
 langchain_openai
+
+streamlit, langgraph, langchain-core, langchain-community, langchain-openai, python-dotenv
