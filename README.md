@@ -52,8 +52,8 @@ Database: SQLite (persistent storage for users, patients, and chat logs)
 Models Supported: gpt-3.5-turbo and gpt-4o (switchable)
 
 📂 Project Structure
-augustina-medical-assistant/
-│── augustina_chatbot_upgrade.py   # Main Streamlit app
+marcellina-medical-assistant/
+│── marcellina_chatbot_upgrade.py   # Main Streamlit app
 │── requirements.txt               # Dependencies
 │── README.md                      # Project documentation
 │── data/
@@ -63,8 +63,8 @@ augustina-medical-assistant/
 
 Clone the repository:
 
-git clone https://github.com/your-repo/augustina-medical-assistant.git
-cd augustina-medical-assistant
+git clone https://github.com/your-repo/marcellina-medical-assistant.git
+cd marcellina-medical-assistant
 
 
 Install dependencies:
@@ -80,7 +80,7 @@ setx OPENAI_API_KEY "your_api_key_here"     # Windows (cmd)
 
 Run the chatbot:
 
-streamlit run augustina_chatbot_upgrade.py
+streamlit run marcellina_chatbot_upgrade.py
 
 💡 Usage Flow
 
@@ -115,7 +115,7 @@ Filters outputs to avoid unsafe, speculative, or non-medical advice.
 User (Doctor):
 “I am feeling headache, nausea, and sweating. What possibly can it be?”
 
-Assistant (Augustina):
+Assistant (Marcellina):
 “Possible causes of your symptoms could be migraine, tension headache, or high blood pressure.
 To be more precise, may I ask: Do you also experience dizziness or blurred vision?
 
