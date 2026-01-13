@@ -272,7 +272,7 @@ if st.session_state.stage == "pro_greeting":
         ["Medical Professionals", "Allied Health Professionals", "Other Healthcare Professionals", "Support Staff"]
     )
     role_map = {
-        "Medical Professionals": ["Doctor", "Nurse", "Midwife", "Dentist"],
+        "Medical Professionals": ["Doctor", "Nurse", "Midwife", "Dentist", "Pharmacist"],
         "Allied Health Professionals": ["Physiotherapy", "Occupational Therapy"],
         "Other Healthcare Professionals": ["Clinical Scientist", "Hearing Aid Dispenser"],
         "Support Staff": ["Technician", "Administrative Staff", "Medical Secretaries", "Receptionist"],
